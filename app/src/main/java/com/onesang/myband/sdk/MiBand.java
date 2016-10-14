@@ -9,6 +9,7 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.content.Context;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.onesang.myband.sdk.listeners.HeartRateNotifyListener;
 import com.onesang.myband.sdk.listeners.NotifyListener;
@@ -34,7 +35,8 @@ public class MiBand {
         this.io = new BluetoothIO();
     }
 
-    public static void startScan(ScanCallback callback) {
+    public static void startScan(ScanCallback callback, TextView tv) {
+        tv.setText("scanning...");
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (null == adapter) {
             Log.e(TAG, "BluetoothAdapter is null");
@@ -48,7 +50,8 @@ public class MiBand {
         scanner.startScan(callback);
     }
 
-    public static void stopScan(ScanCallback callback) {
+    public static void stopScan(ScanCallback callback, TextView tv) {
+        tv.setText("BLE Device List");
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (null == adapter) {
             Log.e(TAG, "BluetoothAdapter is null");

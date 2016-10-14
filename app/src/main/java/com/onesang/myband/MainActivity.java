@@ -7,6 +7,9 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,6 +19,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.onesang.myband.sdk.MiBand;
 
@@ -23,7 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = "MyBand";
     private static final int REQUEST_ENABLE_BT = 999;
 
     private MiBand miBand;
@@ -32,10 +36,47 @@ public class MainActivity extends AppCompatActivity {
 
     HashMap<String, BluetoothDevice> devices = new HashMap<>();
 
+    private static final int REQUEST_CODE = 0x11;
+    String[] permissions = {"android.permission.ACCESS_COARSE_LOCATION"};
+
+    TextView tv;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == REQUEST_CODE) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+            } else {
+                Toast.makeText(getApplicationContext(), permissions[0] + "PERMISSION_DENIED", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+
+//            if (grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+//
+//            } else {
+//                Toast.makeText(getApplicationContext(), permissions[1]+"PERMISSION_DENIED", Toast.LENGTH_SHORT).show();
+//                finish();
+//            }
+        }
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE);
+
         setContentView(R.layout.activity_main);
+
+        // BLE 기능이 지원되는지 확인
+        // Use this check to determine whether BLE is supported on the device.  Then you can
+        // selectively disable BLE-related features.
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
+            finish();
+        }
 
         // Initializes Bluetooth adapter.
         final BluetoothManager bluetoothManager =
@@ -59,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onScanResult(int callbackType, ScanResult result) {
                 super.onScanResult(callbackType, result);
+                show("found device!!");
                 BluetoothDevice device = result.getDevice();
                 log("device name:" + device.getName() + ",uuid:"
                         + device.getUuids() + ",add:"
@@ -74,11 +116,13 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
+        tv = (TextView) findViewById(R.id.tv);
+
         ((Button) findViewById(R.id.starScanButton)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 log("startScan...");
-                MiBand.startScan(scanCallback);
+                MiBand.startScan(scanCallback, tv);
             }
         });
 
@@ -86,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 log("stopScan...");
-                MiBand.stopScan(scanCallback);
+                MiBand.stopScan(scanCallback, tv);
             }
         });
 
@@ -99,21 +143,24 @@ public class MainActivity extends AppCompatActivity {
                 if (devices.containsKey(item)) {
 
                     log("startActivity...");
-                    MiBand.stopScan(scanCallback);
+                    MiBand.stopScan(scanCallback, tv);
 
                     BluetoothDevice device = devices.get(item);
                     Intent intent = new Intent();
                     intent.putExtra("device", device);
-//                    intent.setClass(ScanActivity.this, MainActivity.class);
-//                    ScanActivity.this.startActivity(intent);
-//                    ScanActivity.this.finish();
+                    intent.setClass(MainActivity.this, DeviceControlActivity.class);
+                    MainActivity.this.startActivity(intent);
+                    MainActivity.this.finish();
                 }
             }
         });
 
     }
 
-    private void log (String msg) {
+    private void show(String msg) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+    public static void log(String msg) {
         Log.d(TAG, msg);
     }
 
