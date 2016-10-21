@@ -2,14 +2,13 @@ package com.onesang.myband.sdk;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.content.Context;
-import android.util.Log;
-import android.widget.TextView;
 
 import com.onesang.myband.sdk.listeners.HeartRateNotifyListener;
 import com.onesang.myband.sdk.listeners.NotifyListener;
@@ -22,44 +21,43 @@ import com.onesang.myband.sdk.listeners.model.UserInfo;
 import com.onesang.myband.sdk.listeners.model.VibrationMode;
 
 import java.util.Arrays;
+import java.util.List;
+
+import static com.onesang.myband.ScanActivity.log;
 
 public class MiBand {
 
-    private static final String TAG = "miband-android";
+    private static final String TAG = MiBand.class.getSimpleName();
 
-    private Context context;
     private BluetoothIO io;
 
     public MiBand(Context context) {
-        this.context = context;
-        this.io = new BluetoothIO();
+        this.io = new BluetoothIO(context);
     }
 
-    public static void startScan(ScanCallback callback, TextView tv) {
-        tv.setText("scanning...");
+    public static void startScan(ScanCallback callback) {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (null == adapter) {
-            Log.e(TAG, "BluetoothAdapter is null");
+            log('e', TAG, "BluetoothAdapter is null");
             return;
         }
         BluetoothLeScanner scanner = adapter.getBluetoothLeScanner();
         if (null == scanner) {
-            Log.e(TAG, "BluetoothLeScanner is null");
+            log('e', TAG, "BluetoothLeScanner is null");
             return;
         }
         scanner.startScan(callback);
     }
 
-    public static void stopScan(ScanCallback callback, TextView tv) {
-        tv.setText("BLE Device List");
+    public static void stopScan(ScanCallback callback) {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (null == adapter) {
-            Log.e(TAG, "BluetoothAdapter is null");
+            log('e', TAG, "BluetoothAdapter is null");
             return;
         }
         BluetoothLeScanner scanner = adapter.getBluetoothLeScanner();
         if (null == scanner) {
-            Log.e(TAG, "BluetoothLeScanner is null");
+            log('e', TAG, "BluetoothLeScanner is null");
             return;
         }
         scanner.stopScan(callback);
@@ -70,8 +68,8 @@ public class MiBand {
      *
      * @param callback
      */
-    public void connect(BluetoothDevice device, final ActionCallback callback) {
-        this.io.connect(context, device, callback);
+    public boolean connect(String address, final ActionCallback callback) {
+        return this.io.connect(address, callback);
     }
 
     public void setDisconnectedListener(NotifyListener disconnectedListener) {
@@ -89,7 +87,7 @@ public class MiBand {
             @Override
             public void onSuccess(Object data) {
                 BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) data;
-                Log.d(TAG, "pair result " + Arrays.toString(characteristic.getValue()));
+                log('d', TAG, "pair result " + Arrays.toString(characteristic.getValue()));
                 if (characteristic.getValue().length == 1 && characteristic.getValue()[0] == 2) {
                     callback.onSuccess(null);
                 } else {
@@ -130,7 +128,7 @@ public class MiBand {
             @Override
             public void onSuccess(Object data) {
                 BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) data;
-                Log.d(TAG, "getBatteryInfo result " + Arrays.toString(characteristic.getValue()));
+                log('d', TAG, "getBatteryInfo result " + Arrays.toString(characteristic.getValue()));
                 if (characteristic.getValue().length == 10) {
                     BatteryInfo info = BatteryInfo.fromByteData(characteristic.getValue());
                     callback.onSuccess(info);
@@ -220,7 +218,7 @@ public class MiBand {
 
             @Override
             public void onNotify(byte[] data) {
-                Log.d(TAG, Arrays.toString(data));
+                log('d', TAG, Arrays.toString(data));
                 if (data.length == 4) {
                     int steps = data[3] << 24 | (data[2] & 0xFF) << 16 | (data[1] & 0xFF) << 8 | (data[0] & 0xFF);
                     listener.onNotify(steps);
@@ -279,14 +277,14 @@ public class MiBand {
     }
 
     public void showServicesAndCharacteristics() {
-        for (BluetoothGattService service : this.io.gatt.getServices()) {
-            Log.d(TAG, "onServicesDiscovered:" + service.getUuid());
+        for (BluetoothGattService service : this.io.mBluetoothGatt.getServices()) {
+            log('d', TAG, "onServicesDiscovered:" + service.getUuid());
 
             for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
-                Log.d(TAG, "  char:" + characteristic.getUuid());
+                log('d', TAG, "  char:" + characteristic.getUuid());
 
                 for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors()) {
-                    Log.d(TAG, "    descriptor:" + descriptor.getUuid());
+                    log('d', TAG, "    descriptor:" + descriptor.getUuid());
                 }
             }
         }
@@ -296,7 +294,7 @@ public class MiBand {
         this.io.setNotifyListener(Profile.UUID_SERVICE_HEARTRATE, Profile.UUID_NOTIFICATION_HEARTRATE, new NotifyListener() {
             @Override
             public void onNotify(byte[] data) {
-                Log.d(TAG, Arrays.toString(data));
+                log('d', TAG, Arrays.toString(data));
                 if (data.length == 2 && data[0] == 6) {
                     int heartRate = data[1] & 0xFF;
                     listener.onNotify(heartRate);
@@ -310,4 +308,24 @@ public class MiBand {
         MiBand.this.io.writeCharacteristic(Profile.UUID_SERVICE_HEARTRATE, Profile.UUID_CHAR_HEARTRATE, Protocol.START_HEART_RATE_SCAN, null);
     }
 
+    public void disconnect() {
+        this.io.disconnect();
+    }
+
+    public void close() {
+        this.io.close();
+    }
+
+    public void readCharacteristic(BluetoothGattCharacteristic characteristic) {
+        this.io.readCharacteristic(characteristic);
+    }
+
+    public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic, boolean enabled) {
+        this.io.setCharacteristicNotification(characteristic, enabled);
+    }
+
+
+    public List getSupportedGattServices() {
+        return this.io.getSupportedGattServices();
+    }
 }

@@ -1,241 +1,302 @@
 package com.onesang.myband;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
-import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
+import android.os.IBinder;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
+import android.widget.ExpandableListView;
+import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 
 import com.onesang.myband.sdk.ActionCallback;
-import com.onesang.myband.sdk.MiBand;
-import com.onesang.myband.sdk.listeners.HeartRateNotifyListener;
+import com.onesang.myband.sdk.BluetoothIO;
 import com.onesang.myband.sdk.listeners.NotifyListener;
-import com.onesang.myband.sdk.listeners.RealtimeStepsNotifyListener;
-import com.onesang.myband.sdk.listeners.model.BatteryInfo;
-import com.onesang.myband.sdk.listeners.model.LedColor;
-import com.onesang.myband.sdk.listeners.model.UserInfo;
-import com.onesang.myband.sdk.listeners.model.VibrationMode;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import static com.onesang.myband.ScanActivity.log;
 
 /**
- * Created by mutecsoft on 2016-10-14.
+ * Created by Mutecsoft_pc on 2016-03-31.
  */
+public class DeviceControlActivity extends Activity {
+    private final static String TAG = DeviceControlActivity.class.getSimpleName();
 
-public class DeviceControlActivity extends AppCompatActivity {
-    static final String[] BUTTONS = new String[]{
-            "Connect",
-            "showServicesAndCharacteristics",
-            "read_rssi",
-            "battery_info",
-            "setUserInfo",
-            "setHeartRateNotifyListener",
-            "startHeartRateScan",
-            "miband.startVibration(VibrationMode.VIBRATION_WITH_LED);",
-            "miband.startVibration(VibrationMode.VIBRATION_WITHOUT_LED);",
-            "miband.startVibration(VibrationMode.VIBRATION_10_TIMES_WITH_LED);",
-            "stopVibration",
-            "setNormalNotifyListener",
-            "setRealtimeStepsNotifyListener",
-            "enableRealtimeStepsNotify",
-            "disableRealtimeStepsNotify",
-            "miband.setLedColor(LedColor.ORANGE);",
-            "miband.setLedColor(LedColor.BLUE);",
-            "miband.setLedColor(LedColor.RED);",
-            "miband.setLedColor(LedColor.GREEN);",
-            "setSensorDataNotifyListener",
-            "enableSensorDataNotify",
-            "disableSensorDataNotify",
-            "pair",
+    public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
+    public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
+
+    private TextView mConnectionState;
+    private TextView mDataField;
+    private String mDeviceName;
+    private String mDeviceAddress;
+    private ExpandableListView mGattServicesList;
+    private BluetoothLeService mBluetoothLeService;
+    private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
+            new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
+    private boolean mConnected = false;
+    private BluetoothGattCharacteristic mNotifyCharacteristic;
+
+    private final String LIST_NAME = "NAME";
+    private final String LIST_UUID = "UUID";
+
+    // Code to manage Service lifecycle.
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+
+            mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
+            if (!mBluetoothLeService.initialize()) {
+                log('e', TAG, "Unable to initialize Bluetooth");
+                finish();
+            }
+            // Automatically connects to the device upon successful start-up initialization.
+            mBluetoothLeService.connect(mDeviceAddress, DeviceControlActivity.this);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mBluetoothLeService = null;
+        }
     };
-    private static final String TAG = "==[mibandtest]==";
-    private static final int Message_What_ShowLog = 1;
-    private MiBand miband;
-    private TextView logView;
-    private Handler handler = new Handler(Looper.getMainLooper()) {
-        public void handleMessage(Message m) {
-            switch (m.what) {
-                case Message_What_ShowLog:
-                    String text = (String) m.obj;
-                    logView.setText(text);
-                    break;
+
+    // Handles various events fired by the Service.
+    // ACTION_GATT_CONNECTED: connected to a GATT server.
+    // ACTION_GATT_DISCONNECTED: disconnected from a GATT server.
+    // ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
+    // ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
+    //                        or notification operations.
+    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (BluetoothIO.ACTION_GATT_CONNECTED.equals(action)) {
+                mConnected = true;
+                updateConnectionState(R.string.connected);
+                invalidateOptionsMenu();
+            } else if (BluetoothIO.ACTION_GATT_DISCONNECTED.equals(action)) {
+                mConnected = false;
+                updateConnectionState(R.string.disconnected);
+                invalidateOptionsMenu();
+                clearUI();
+                mBluetoothLeService.dismiss();
+            } else if (BluetoothIO.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+                // Show all the supported services and characteristics on the user interface.
+                displayGattServices(mBluetoothLeService.getSupportedGattServices());
+            } else if (BluetoothIO.ACTION_DATA_AVAILABLE.equals(action)) {
+                displayData(intent.getStringExtra(BluetoothIO.EXTRA_DATA));
             }
         }
     };
 
+    // If a given GATT characteristic is selected, check for supported features.  This sample
+    // demonstrates 'Read' and 'Notify' features.  See
+    // http://d.android.com/reference/android/bluetooth/BluetoothGatt.html for the complete
+    // list of supported characteristic features.
+    private final ExpandableListView.OnChildClickListener servicesListClickListner =
+            new ExpandableListView.OnChildClickListener() {
+                @Override
+                public boolean onChildClick(ExpandableListView parent, View v, int groupPosition,
+                                            int childPosition, long id) {
+                    if (mGattCharacteristics != null) {
+                        final BluetoothGattCharacteristic characteristic =
+                                mGattCharacteristics.get(groupPosition).get(childPosition);
+                        final int charaProp = characteristic.getProperties();
+                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
+                            // If there is an active notification on a characteristic, clear
+                            // it first so it doesn't update the data field on the user interface.
+                            if (mNotifyCharacteristic != null) {
+                                mBluetoothLeService.setCharacteristicNotification(
+                                        mNotifyCharacteristic, false);
+                                mNotifyCharacteristic = null;
+                            }
+                            mBluetoothLeService.readCharacteristic(characteristic);
+                        }
+                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
+                            mNotifyCharacteristic = characteristic;
+                            mBluetoothLeService.setCharacteristicNotification(
+                                    characteristic, true);
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+            };
+
+    private void clearUI() {
+        mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
+        mDataField.setText(R.string.no_data);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_device_control);
+        setContentView(R.layout.gatt_services_characteristics);
 
+        final Intent intent = getIntent();
+        mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
+        mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
 
-        this.logView = (TextView) findViewById(R.id.textView);
+        // Sets up UI references.
+        ((TextView)findViewById(R.id.device_address)).setText(mDeviceAddress);
+        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
+        mGattServicesList.setOnChildClickListener(servicesListClickListner);
+        mConnectionState = (TextView) findViewById(R.id.connection_state);
+        mDataField = (TextView) findViewById(R.id.data_value);
 
-        Intent intent = this.getIntent();
-        final BluetoothDevice device = intent.getParcelableExtra("device");
+        getActionBar().setTitle(mDeviceName);
+        getActionBar().setDisplayHomeAsUpEnabled(true);
+        Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
+        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+        if (mBluetoothLeService != null) {
+            final boolean result = mBluetoothLeService.connect(mDeviceAddress, DeviceControlActivity.this);
+            log('d', TAG, "Connect request result=" + result);
+        }
+    }
 
-        miband = new MiBand(this);
-        ListView lv = (ListView) findViewById(R.id.listView);
-        lv.setAdapter(new ArrayAdapter<String>(this, R.layout.item, BUTTONS));
-        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                int menuIndex = 0;
-                if (position == menuIndex++) {
-                    final ProgressDialog pd = ProgressDialog.show(DeviceControlActivity.this, "", "努力运行中, 请稍后......");
-                    miband.connect(device, new ActionCallback() {
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(mGattUpdateReceiver);
+        mBluetoothLeService.dismiss();
+    }
 
-                        @Override
-                        public void onSuccess(Object data) {
-                            pd.dismiss();
-                            log("connected!!!");
-                            miband.setDisconnectedListener(new NotifyListener() {
-                                @Override
-                                public void onNotify(byte[] data) {
-                                    log("disconnected!!!");
-                                }
-                            });
-                        }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(mServiceConnection);
+        mBluetoothLeService = null;
+    }
 
-                        @Override
-                        public void onFail(int errorCode, String msg) {
-                            pd.dismiss();
-                            log("connect fail, code:" + errorCode + ",mgs:" + msg);
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    miband.showServicesAndCharacteristics();
-                } else if (position == menuIndex++) {
-                    miband.readRssi(new ActionCallback() {
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.gatt_services, menu);
+        if (mConnected) {
+            menu.findItem(R.id.menu_connect).setVisible(false);
+            menu.findItem(R.id.menu_disconnect).setVisible(true);
+        } else {
+            menu.findItem(R.id.menu_connect).setVisible(true);
+            menu.findItem(R.id.menu_disconnect).setVisible(false);
+        }
+        return true;
+    }
 
-                        @Override
-                        public void onSuccess(Object data) {
-                            log("rssi:" + (int) data);
-                        }
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch(item.getItemId()) {
+            case R.id.menu_connect:
+                mBluetoothLeService.connect(mDeviceAddress, DeviceControlActivity.this);
+                return true;
+            case R.id.menu_disconnect:
+                mBluetoothLeService.disconnect();
+                return true;
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
-                        @Override
-                        public void onFail(int errorCode, String msg) {
-                            log("readRssi fail");
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    miband.getBatteryInfo(new ActionCallback() {
-
-                        @Override
-                        public void onSuccess(Object data) {
-                            BatteryInfo info = (BatteryInfo) data;
-                            log(info.toString());
-                        }
-
-                        @Override
-                        public void onFail(int errorCode, String msg) {
-                            log("getBatteryInfo fail");
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    UserInfo userInfo = new UserInfo(20271234, 1, 32, 160, 40, "1哈哈", 0);
-                    log("setUserInfo:" + userInfo.toString() + ",data:" + Arrays.toString(userInfo.getBytes(miband.getDevice().getAddress())));
-                    miband.setUserInfo(userInfo);
-                } else if (position == menuIndex++) {
-
-                    miband.setHeartRateScanListener(new HeartRateNotifyListener() {
-                        @Override
-                        public void onNotify(int heartRate) {
-                            log("heart rate: " + heartRate);
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    miband.startHeartRateScan();
-                } else if (position == menuIndex++) {
-                    miband.startVibration(VibrationMode.VIBRATION_WITH_LED);
-                } else if (position == menuIndex++) {
-                    miband.startVibration(VibrationMode.VIBRATION_WITHOUT_LED);
-                } else if (position == menuIndex++) {
-                    miband.startVibration(VibrationMode.VIBRATION_10_TIMES_WITH_LED);
-                } else if (position == menuIndex++) {
-                    miband.stopVibration();
-                } else if (position == menuIndex++) {
-                    miband.setNormalNotifyListener(new NotifyListener() {
-
-                        @Override
-                        public void onNotify(byte[] data) {
-                            log("NormalNotifyListener:" + Arrays.toString(data));
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    miband.setRealtimeStepsNotifyListener(new RealtimeStepsNotifyListener() {
-
-                        @Override
-                        public void onNotify(int steps) {
-                            log("RealtimeStepsNotifyListener:" + steps);
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    miband.enableRealtimeStepsNotify();
-                } else if (position == menuIndex++) {
-                    miband.disableRealtimeStepsNotify();
-                } else if (position == menuIndex++) {
-                    miband.setLedColor(LedColor.ORANGE);
-                } else if (position == menuIndex++) {
-                    miband.setLedColor(LedColor.BLUE);
-                } else if (position == menuIndex++) {
-                    miband.setLedColor(LedColor.RED);
-                } else if (position == menuIndex++) {
-                    miband.setLedColor(LedColor.GREEN);
-                } else if (position == menuIndex++) {
-                    miband.setSensorDataNotifyListener(new NotifyListener() {
-                        @Override
-                        public void onNotify(byte[] data) {
-                            ByteBuffer byteBuffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
-                            int i = 0;
-
-                            int index = (data[i++] & 0xFF) | (data[i++] & 0xFF) << 8;
-                            int d1 = (data[i++] & 0xFF) | (data[i++] & 0xFF) << 8;
-                            int d2 = (data[i++] & 0xFF) | (data[i++] & 0xFF) << 8;
-                            int d3 = (data[i++] & 0xFF) | (data[i++] & 0xFF) << 8;
-
-                            Message m = new Message();
-                            m.what = Message_What_ShowLog;
-                            m.obj = index + "," + d1 + "," + d2 + "," + d3;
-
-                            handler.sendMessage(m);
-                        }
-                    });
-                } else if (position == menuIndex++) {
-                    miband.enableSensorDataNotify();
-                } else if (position == menuIndex++) {
-                    miband.disableSensorDataNotify();
-                } else if (position == menuIndex++) {
-                    miband.pair(new ActionCallback() {
-
-                        @Override
-                        public void onSuccess(Object data) {
-                            log("pair succ");
-                        }
-
-                        @Override
-                        public void onFail(int errorCode, String msg) {
-                            log("pair fail");
-                        }
-                    });
-                }
+    private void updateConnectionState(final int resourceId) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mConnectionState.setText(resourceId);
             }
         });
-
     }
 
-    void log(String msg) {
-        MainActivity.log(msg);
+    private void displayData(String data) {
+        if (data != null) {
+            mDataField.setText(data);
+        }
+    }
+
+    // Demonstrates how to iterate through the supported GATT Services/Characteristics.
+    // In this sample, we populate the data structure that is bound to the ExpandableListView
+    // on the UI.
+    private void displayGattServices(List<BluetoothGattService> gattServices) {
+        if (gattServices == null) return;
+        String uuid = null;
+        String unknownServiceString = getResources().getString(R.string.unknown_service);
+        String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
+        ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
+        ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
+                = new ArrayList<ArrayList<HashMap<String, String>>>();
+        mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
+
+
+
+        // Loops through available GATT Services.
+        for (BluetoothGattService gattService : gattServices) {
+            HashMap<String, String> currentServiceData = new HashMap<String, String>();
+            uuid = gattService.getUuid().toString();
+            currentServiceData.put(
+                    LIST_NAME, SampleGattAttributes.lookup(uuid, unknownServiceString));
+            currentServiceData.put(LIST_UUID, uuid);
+            gattServiceData.add(currentServiceData);
+
+            ArrayList<HashMap<String, String>> gattCharacteristicGroupData =
+                    new ArrayList<HashMap<String, String>>();
+            List<BluetoothGattCharacteristic> gattCharacteristics =
+                    gattService.getCharacteristics();
+            ArrayList<BluetoothGattCharacteristic> charas =
+                    new ArrayList<BluetoothGattCharacteristic>();
+
+            // Loops through available Characteristics.
+            for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
+                charas.add(gattCharacteristic);
+                HashMap<String, String> currentCharaData = new HashMap<String, String>();
+                uuid = gattCharacteristic.getUuid().toString();
+                currentCharaData.put(
+                        LIST_NAME, SampleGattAttributes.lookup(uuid, unknownCharaString));
+                currentCharaData.put(LIST_UUID, uuid);
+                gattCharacteristicGroupData.add(currentCharaData);
+            }
+            mGattCharacteristics.add(charas);
+            gattCharacteristicData.add(gattCharacteristicGroupData);
+        }
+
+        SimpleExpandableListAdapter gattServiceAdapter = new SimpleExpandableListAdapter(
+                this,
+                gattServiceData,
+                android.R.layout.simple_expandable_list_item_2,
+                new String[] {LIST_NAME, LIST_UUID},
+                new int[] { android.R.id.text1, android.R.id.text2 },
+                gattCharacteristicData,
+                android.R.layout.simple_expandable_list_item_2,
+                new String[] {LIST_NAME, LIST_UUID},
+                new int[] { android.R.id.text1, android.R.id.text2 }
+        );
+        mGattServicesList.setAdapter(gattServiceAdapter);
+    }
+
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothIO.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BluetoothIO.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(BluetoothIO.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(BluetoothIO.ACTION_DATA_AVAILABLE);
+        return intentFilter;
     }
 }
+
