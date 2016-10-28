@@ -37,6 +37,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
+import static com.onesang.myband.MainActivity.PRFFS_ADDRESS;
+import static com.onesang.myband.MainActivity.PRFFS_ADDRESS_KEY;
+
 /**
  * Created by K on 2016-03-29.
  */
@@ -56,8 +59,6 @@ public class DeviceScanActivity extends ListActivity {
     // 스캔된 디바이스에 거리를 담는 변수
     private HashMap<String, Double> mDistances;
 
-    private MiBand miBand;
-
     String mPath;
     File file;
 
@@ -70,7 +71,7 @@ public class DeviceScanActivity extends ListActivity {
             int rssi = result.getRssi();
             double distance = computeAccuracy(rssi, -74);
 
-            log("device name:" + device.getName() +
+            log('d', TAG, "device name:" + device.getName() +
                     ",uuid:" + device.getUuids() +
                     ",add:" + device.getAddress() +
                     ",type:" + device.getType() +
@@ -95,7 +96,7 @@ public class DeviceScanActivity extends ListActivity {
 
             mLeDeviceListAdapter.addDevice(device);
             mLeDeviceListAdapter.notifyDataSetChanged();
-            log("device name:" + device.getName() + ",uuid:"
+            log('d', TAG, "device name:" + device.getName() + ",uuid:"
                     + device.getUuids() + ",add:"
                     + device.getAddress() + ",type:"
                     + device.getType() + ",bondState:"
@@ -147,7 +148,7 @@ public class DeviceScanActivity extends ListActivity {
             };
 
     private static final int REQUEST_PERMISSIONS = 0x11;
-    String[] permissions = {"android.permission.BLUETOOTH", "android.permission.BLUETOOTH_ADMIN", "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION",
+    String[] permissions = {/*"android.permission.BLUETOOTH", */"android.permission.BLUETOOTH_ADMIN", "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.READ_PHONE_STATE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.READ_EXTERNAL_STORAGE"};
 
     @Override
@@ -181,8 +182,6 @@ public class DeviceScanActivity extends ListActivity {
         file = new File(mPath +"/test.txt");
         mDistances = new HashMap<String, Double>();
 
-        miBand = new MiBand(this);
-
         // BLE 기능이 지원되는지 확인
         // Use this check to determine whether BLE is supported on the device.  Then you can
         // selectively disable BLE-related features.
@@ -207,7 +206,7 @@ public class DeviceScanActivity extends ListActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main, menu);
+        getMenuInflater().inflate(R.menu.menu_device_control, menu);
         if (!mScanning) {
             menu.findItem(R.id.menu_stop).setVisible(false);
             menu.findItem(R.id.menu_scan).setVisible(true);
@@ -272,8 +271,9 @@ public class DeviceScanActivity extends ListActivity {
         final Intent intent = new Intent(this, DeviceControlActivity.class);
         intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_NAME, device.getName());
         intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());
+        getSharedPreferences(PRFFS_ADDRESS, MODE_PRIVATE).edit().putString(PRFFS_ADDRESS_KEY, device.getAddress()).apply();
         if (mScanning) {
-            mBluetoothAdapter.stopLeScan(mLeScanCallback);
+            MiBand.stopScan(mScanCallback);
             mScanning = false;
         }
         startActivity(intent);
@@ -432,9 +432,26 @@ public class DeviceScanActivity extends ListActivity {
         }
     }
 
-    private void log(String msg) {
-        Log.d(TAG, msg);
+    public static void log(Character c, String localTag, String msg) {
+        log(c, localTag, msg, null);
     }
+    public static void log(Character c, String localTag, String msg, Throwable tw) {
+        switch (c) {
+            case 'd' :
+                Log.d("MyBand", localTag +" : "+ msg);
+                break;
+            case 'w' :
+                Log.w("MyBand", localTag +" : "+ msg);
+                break;
+            case 'i' :
+                Log.i("MyBand", localTag +" : "+ msg);
+                break;
+            case 'e' :
+                Log.e("MyBand", localTag +" : "+ msg, tw);
+                break;
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         // User chose not to enable Bluetooth.

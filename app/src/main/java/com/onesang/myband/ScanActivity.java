@@ -78,7 +78,7 @@ public class ScanActivity extends AppCompatActivity {
         mBluetoothAdapter = bluetoothManager.getAdapter();
 
         // Ensures Bluetooth is available on the device and it is enabled. If not,
-        // displays a dialog requesting user permission to enable Bluetooth.
+        // displays a dialogd requesting user permission to enable Bluetooth.
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
@@ -92,7 +92,7 @@ public class ScanActivity extends AppCompatActivity {
                 super.onScanResult(callbackType, result);
                 show("found device!!");
                 BluetoothDevice device = result.getDevice();
-                log('d', TAG, "device name:" + device.getName() + ",uuid:"
+                logd('d', TAG, "device name:" + device.getName() + ",uuid:"
                         + device.getUuids() + ",add:"
                         + device.getAddress() + ",type:"
                         + device.getType() + ",bondState:"
@@ -111,7 +111,7 @@ public class ScanActivity extends AppCompatActivity {
         ((Button) findViewById(R.id.starScanButton)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                log('d', TAG, "startScan...");
+                logd('d', TAG, "startScan...");
                 MiBand.startScan(scanCallback);
             }
         });
@@ -119,7 +119,7 @@ public class ScanActivity extends AppCompatActivity {
         ((Button) findViewById(R.id.stopScanButton)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                log('d', TAG, "stopScan...");
+                logd('d', TAG, "stopScan...");
                 MiBand.stopScan(scanCallback);
             }
         });
@@ -132,7 +132,7 @@ public class ScanActivity extends AppCompatActivity {
                 String item = ((TextView) view).getText().toString();
                 if (devices.containsKey(item)) {
 
-                    log('d', TAG, "startActivity...");
+                    logd('d', TAG, "startActivity...");
                     MiBand.stopScan(scanCallback);
 
                     BluetoothDevice device = devices.get(item);
@@ -151,10 +151,10 @@ public class ScanActivity extends AppCompatActivity {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
-    public static void log(Character c, String localTag, String msg) {
-        log(c, localTag, msg, null);
+    public static void logd(Character c, String localTag, String msg) {
+        logd(c, localTag, msg, null);
     }
-    public static void log(Character c, String localTag, String msg, Throwable tw) {
+    public static void logd(Character c, String localTag, String msg, Throwable tw) {
         switch (c) {
             case 'd' :
                 Log.d("MyBand", localTag +" : "+ msg);

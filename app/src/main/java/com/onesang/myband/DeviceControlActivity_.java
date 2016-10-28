@@ -19,16 +19,12 @@ import com.onesang.myband.sdk.MiBand;
 import com.onesang.myband.sdk.listeners.HeartRateNotifyListener;
 import com.onesang.myband.sdk.listeners.NotifyListener;
 import com.onesang.myband.sdk.listeners.RealtimeStepsNotifyListener;
-import com.onesang.myband.sdk.listeners.model.BatteryInfo;
+import com.onesang.myband.sdk.listeners.model.AlertMode;
 import com.onesang.myband.sdk.listeners.model.LedColor;
 import com.onesang.myband.sdk.listeners.model.UserInfo;
-import com.onesang.myband.sdk.listeners.model.VibrationMode;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
-
-import static com.onesang.myband.ScanActivity.log;
 
 /**
  * Created by mutecsoft on 2016-10-14.
@@ -43,9 +39,9 @@ public class DeviceControlActivity_ extends AppCompatActivity {
             "setUserInfo",
             "setHeartRateNotifyListener",
             "startHeartRateScan",
-            "miband.startVibration(VibrationMode.VIBRATION_WITH_LED);",
-            "miband.startVibration(VibrationMode.VIBRATION_WITHOUT_LED);",
-            "miband.startVibration(VibrationMode.VIBRATION_10_TIMES_WITH_LED);",
+            "miband.startVibration(AlertMode.ALERT_MESSAGE);",
+            "miband.startVibration(AlertMode.ALERT_NORMAL);",
+            "miband.startVibration(AlertMode.ALERT_CALL);",
             "stopVibration",
             "setNormalNotifyListener",
             "setRealtimeStepsNotifyListener",
@@ -131,19 +127,6 @@ public class DeviceControlActivity_ extends AppCompatActivity {
 ////                        }
 //                    });
                 } else if (position == menuIndex++) {
-                    miband.getBatteryInfo(new ActionCallback() {
-
-                        @Override
-                        public void onSuccess(Object data) {
-                            BatteryInfo info = (BatteryInfo) data;
-//                            log(TAG, info.toString());
-                        }
-
-                        @Override
-                        public void onFail(int errorCode, String msg) {
-//                            log(TAG, "getBatteryInfo fail");
-                        }
-                    });
                 } else if (position == menuIndex++) {
                     UserInfo userInfo = new UserInfo(20271234, 1, 32, 160, 40, "1哈哈", 0);
 //                    log(TAG, "setUserInfo:" + userInfo.toString() + ",data:" + Arrays.toString(userInfo.getBytes(miband.getDevice().getAddress())));
@@ -157,13 +140,13 @@ public class DeviceControlActivity_ extends AppCompatActivity {
                         }
                     });
                 } else if (position == menuIndex++) {
-                    miband.startHeartRateScan();
+//                    miband.startHeartRateScan();
                 } else if (position == menuIndex++) {
-                    miband.startVibration(VibrationMode.VIBRATION_WITH_LED);
+                    miband.startVibration(AlertMode.ALERT_MESSAGE);
                 } else if (position == menuIndex++) {
-                    miband.startVibration(VibrationMode.VIBRATION_WITHOUT_LED);
+                    miband.startVibration(AlertMode.ALERT_NORMAL);
                 } else if (position == menuIndex++) {
-                    miband.startVibration(VibrationMode.VIBRATION_10_TIMES_WITH_LED);
+                    miband.startVibration(AlertMode.ALERT_CALL);
                 } else if (position == menuIndex++) {
                     miband.stopVibration();
                 } else if (position == menuIndex++) {
