@@ -117,6 +117,7 @@ public class DeviceControlActivity extends Activity {
                                 mGattCharacteristics.get(groupPosition).get(childPosition);
                         final int charaProp = characteristic.getProperties();
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
+                            log('d', TAG, "charaProp: "+charaProp+" PROPERTY_READ: "+BluetoothGattCharacteristic.PROPERTY_READ+" (charaProp | BluetoothGattCharacteristic.PROPERTY_READ): "+(charaProp | BluetoothGattCharacteristic.PROPERTY_READ));
                             // If there is an active notification on a characteristic, clear
                             // it first so it doesn't update the data field on the user interface.
                             if (mNotifyCharacteristic != null) {
@@ -127,6 +128,7 @@ public class DeviceControlActivity extends Activity {
                             mBluetoothLeService.readCharacteristic(characteristic);
                         }
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
+                            log('d', TAG, "charaProp: "+charaProp+" PROPERTY_NOTIFY: "+BluetoothGattCharacteristic.PROPERTY_NOTIFY+" (charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY): "+(charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY));
                             mNotifyCharacteristic = characteristic;
                             mBluetoothLeService.setCharacteristicNotification(
                                     characteristic, true);

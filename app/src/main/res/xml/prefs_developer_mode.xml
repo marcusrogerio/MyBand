@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        android:title="Privacy"/>
+
+    <SwitchPreference
+        android:key="discoverable"
+        android:title="Discoverable"
+        android:summary="Turn on to be visible to nearby devices"/>
+
+    <PreferenceCategory
+        android:title="My devices"/>
+
+    <PreferenceScreen
+        android:key="find_band"
+        android:title="Find band"/>
+
+    <ListPreference
+        android:key="band_location"
+        android:title="Band location"
+        android:summary="@string/left_hand"
+        android:entries="@array/band_location"
+        android:entryValues="@array/band_location_values"
+        android:defaultValue="0"/>
+
+    <MultiSelectListPreference
+        android:key="mi_band_display_settings"
+        android:title="Mi Band display settings"
+        android:summary="Choose items displayed on the band"
+        android:entries="@array/mi_band_display_settings"
+        android:entryValues="@array/mi_band_display_settings_values"
+        android:defaultValue="@array/empty_array"/>
+
+    <ListPreference
+        android:key="time_format"
+        android:title="Time format"
+        android:summary="Select time format"
+        android:entries="@array/time_format"
+        android:entryValues="@array/time_format_values"
+        android:defaultValue="0"/>
+
+    <SwitchPreference
+        android:key="lift_wrist_to_view_info"
+        android:title="Lift wrist to view info"
+        android:summary="Lift your wrist to view info on Mi Band"/>
+
+    <SwitchPreference
+        android:key="rotate_your_wrist_to_switch_info_on_mi_band"
+        android:title="Rotate your wrist to switch info on Mi Band"
+        android:summary="Rotate your wrist to switch info on Mi Band when..."/>
+
+    <SwitchPreference
+        android:key="heart_rate_sleep_assistant"
+        android:title="Heart rate sleep assistant"
+        android:summary="Helps to get more precise sleep data (reduces battery life)"/>
+
+
+</PreferenceScreen>

@@ -4,4 +4,8 @@
         android:checkable="false"
         android:orderInCategory="1"
         android:title="@string/scan"/>
+    <item android:id="@+id/menu_developer"
+        android:checkable="false"
+        android:orderInCategory="2"
+        android:title="@string/developer"/>
 </menu>

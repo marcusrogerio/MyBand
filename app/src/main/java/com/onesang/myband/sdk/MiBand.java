@@ -13,10 +13,12 @@ import com.onesang.myband.sdk.listeners.HeartRateNotifyListener;
 import com.onesang.myband.sdk.listeners.NotifyListener;
 import com.onesang.myband.sdk.listeners.RealtimeStepsNotifyListener;
 import com.onesang.myband.sdk.listeners.model.AlertMode;
+import com.onesang.myband.sdk.listeners.model.BandLocation;
 import com.onesang.myband.sdk.listeners.model.BatteryInfo;
 import com.onesang.myband.sdk.listeners.model.LedColor;
 import com.onesang.myband.sdk.listeners.model.Profile;
 import com.onesang.myband.sdk.listeners.model.Protocol;
+import com.onesang.myband.sdk.listeners.model.TimeFormat;
 import com.onesang.myband.sdk.listeners.model.UserInfo;
 
 import java.util.Arrays;
@@ -150,7 +152,7 @@ public class MiBand {
     /**
      * 让手环震动
      */
-    public void startVibration(AlertMode mode) {
+    public void startAlert(AlertMode mode) {
         byte[] protocal;
         switch (mode) {
             case ALERT_MESSAGE:
@@ -171,8 +173,8 @@ public class MiBand {
     /**
      * 停止以模式Protocol.ALERT_CALL 开始的震动
      */
-    public void stopVibration() {
-        this.io.writeCharacteristic(Profile.UUID_SERVICE_ALERT, Profile.UUID_CHAR_ALERT, Protocol.STOP_VIBRATION, null);
+    public void stopAlert() {
+        this.io.writeCharacteristic(Profile.UUID_SERVICE_ALERT, Profile.UUID_CHAR_ALERT, Protocol.ALERT_STOP, null);
     }
 
     public void setNotifyListener(UUID characteristicId, NotifyListener listener) {
@@ -293,6 +295,8 @@ public class MiBand {
                     log('d', TAG, "    descriptor:" + descriptor.getUuid());
                 }
             }
+
+            log('d', TAG, "");
         }
     }
 
@@ -339,5 +343,73 @@ public class MiBand {
 
     public void close() {
         this.io.close();
+    }
+
+    public void setBandLocation(BandLocation bandLocation) {
+        byte[] protocal;
+        switch (bandLocation) {
+            case BAND_LEFT:
+                protocal = Protocol.BAND_LOCATION_LEFT;
+                break;
+            case BAND_RIGHT:
+                protocal = Protocol.BAND_LOCATION_RIGHT;
+                break;
+            default:
+                return;
+        }
+        this.io.writeCharacteristic(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_BAND_LOCATION, protocal, null);
+    }
+
+    public void setTimeFormat(TimeFormat timeFormat) {
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, true);
+        byte[] protocal;
+        switch (timeFormat) {
+            case TIME_ONLY:
+                protocal = Protocol.TIME_ONLY;
+                break;
+            case TIME_DATE:
+                protocal = Protocol.TIME_DATE;
+                break;
+            default:
+                return;
+        }
+        this.io.writeCharacteristic(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, protocal, null);
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, false);
+    }
+
+    public void setLiftWrist(boolean enabled) {
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, true);
+        byte[] protocal;
+        if (enabled) {
+            protocal = Protocol.LIFT_WRIST_ON;
+        } else {
+            protocal = Protocol.LIFT_WRIST_OFF;
+        }
+        this.io.writeCharacteristic(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, protocal, null);
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, false);
+    }
+
+    public void setHeartRateSleepAssistant(boolean enabled) {
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_HEARTRATE, Profile.UUID_CHAR_HEART_RATE_NOTIFICATION, true);
+        byte[] protocal;
+        if (enabled) {
+            protocal = Protocol.HEART_RATE_SLEEP_ASSISTANT_ON;
+        } else {
+            protocal = Protocol.HEART_RATE_SLEEP_ASSISTANT_OFF;
+        }
+        this.io.writeCharacteristic(Profile.UUID_SERVICE_HEARTRATE, Profile.UUID_CHAR_HEART_RATE_CONTROL_POINT, protocal, null);
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_HEARTRATE, Profile.UUID_CHAR_HEART_RATE_NOTIFICATION, false);
+    }
+
+    public void setDiscoverable(boolean enabled) {
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, true);
+        byte[] protocal;
+        if (enabled) {
+            protocal = Protocol.DISCOVERABLE_ON;
+        } else {
+            protocal = Protocol.DISCOVERABLE_OFF;
+        }
+        this.io.writeCharacteristic(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, protocal, null);
+        this.io.setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, false);
     }
 }

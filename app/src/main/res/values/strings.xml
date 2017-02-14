@@ -41,4 +41,8 @@
     <string name="get_battery_info">Get BatteryInfo</string>
 
     <string name="address_has_been_updated">Address has been updated!</string>
+
+    <string name="developer">Developer</string>
+    <string name="left_hand">Left hand</string>
+    <string name="right_hand">Right hand</string>
 </resources>

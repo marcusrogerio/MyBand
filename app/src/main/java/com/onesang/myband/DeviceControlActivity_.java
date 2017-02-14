@@ -39,10 +39,10 @@ public class DeviceControlActivity_ extends AppCompatActivity {
             "setUserInfo",
             "setHeartRateNotifyListener",
             "startHeartRateScan",
-            "miband.startVibration(AlertMode.ALERT_MESSAGE);",
-            "miband.startVibration(AlertMode.ALERT_NORMAL);",
-            "miband.startVibration(AlertMode.ALERT_CALL);",
-            "stopVibration",
+            "miband.startAlert(AlertMode.ALERT_MESSAGE);",
+            "miband.startAlert(AlertMode.ALERT_NORMAL);",
+            "miband.startAlert(AlertMode.ALERT_CALL);",
+            "stopAlert",
             "setNormalNotifyListener",
             "setRealtimeStepsNotifyListener",
             "enableRealtimeStepsNotify",
@@ -142,13 +142,13 @@ public class DeviceControlActivity_ extends AppCompatActivity {
                 } else if (position == menuIndex++) {
 //                    miband.startHeartRateScan();
                 } else if (position == menuIndex++) {
-                    miband.startVibration(AlertMode.ALERT_MESSAGE);
+                    miband.startAlert(AlertMode.ALERT_MESSAGE);
                 } else if (position == menuIndex++) {
-                    miband.startVibration(AlertMode.ALERT_NORMAL);
+                    miband.startAlert(AlertMode.ALERT_NORMAL);
                 } else if (position == menuIndex++) {
-                    miband.startVibration(AlertMode.ALERT_CALL);
+                    miband.startAlert(AlertMode.ALERT_CALL);
                 } else if (position == menuIndex++) {
-                    miband.stopVibration();
+                    miband.stopAlert();
                 } else if (position == menuIndex++) {
                     miband.setNormalNotifyListener(new NotifyListener() {
 

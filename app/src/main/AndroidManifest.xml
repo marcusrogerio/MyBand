@@ -28,6 +28,8 @@
         <activity android:name=".DeviceControlActivity"
             android:theme="@android:style/Theme.Holo.Light.DarkActionBar"/>
         <service android:name=".BluetoothLeService" android:enabled="true"/>
+        <activity android:name=".DeveloperModeActivity"
+            android:theme="@android:style/Theme.Holo.Light.DarkActionBar"/>
     </application>
 
 </manifest>

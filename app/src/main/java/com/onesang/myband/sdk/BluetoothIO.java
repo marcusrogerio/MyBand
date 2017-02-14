@@ -11,9 +11,13 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
 import com.onesang.myband.sdk.listeners.NotifyListener;
 import com.onesang.myband.sdk.listeners.model.Profile;
+import com.onesang.myband.sdk.listeners.model.Protocol;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,21 +50,24 @@ public class BluetoothIO extends BluetoothGattCallback {
     private String mBluetoothDeviceAddress;
     BluetoothGatt mBluetoothGatt;
 
-    ActionCallback currentCallback;
-    Context context;
+    ActionCallback mCurrentCallback;
+    Context mContext;
 
     HashMap<UUID, NotifyListener> notifyListeners = new HashMap<UUID, NotifyListener>();
     NotifyListener disconnectedListener = null;
 
+    private boolean isConnected;
+    private BluetoothGattCharacteristic mCharBatteryInfo;
+
     public BluetoothIO(Context c) {
-        context = c;
+        mContext = c;
         initialize();
     }
     public boolean initialize() {
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
         if (mBluetoothManager == null) {
-            mBluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+            mBluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
             if (mBluetoothManager == null) {
                 log('e', TAG, "Unable to initialize BluetoothManager.");
                 return false;
@@ -86,7 +93,8 @@ public class BluetoothIO extends BluetoothGattCallback {
      *         callback.
      */
     public boolean connect(String address, final ActionCallback callback) {
-        BluetoothIO.this.currentCallback = callback;
+        isConnected = true;
+        BluetoothIO.this.mCurrentCallback = callback;
 
         if (mBluetoothAdapter == null || address == null) {
             log('w', TAG, "BluetoothAdapter not initialized or unspecified address.");
@@ -113,7 +121,7 @@ public class BluetoothIO extends BluetoothGattCallback {
 
         // We want to directly connect to the device, so we are setting the autoConnect
         // parameter to false.
-        mBluetoothGatt = device.connectGatt(context, false, BluetoothIO.this);
+        mBluetoothGatt = device.connectGatt(mContext, false, BluetoothIO.this);
         log('d', TAG, "Trying to create a new connection.");
         mBluetoothDeviceAddress = address;
         mConnectionState = STATE_CONNECTING;
@@ -127,6 +135,7 @@ public class BluetoothIO extends BluetoothGattCallback {
      * callback.
      */
     public void disconnect() {
+        isConnected = false;
         if (mBluetoothAdapter == null || mBluetoothGatt == null) {
             log('w', TAG, "BluetoothAdapter not initialized");
             return;
@@ -139,6 +148,7 @@ public class BluetoothIO extends BluetoothGattCallback {
      * released properly.
      */
     public void close() {
+        isConnected = false;
         if (mBluetoothGatt == null) {
             return;
         }
@@ -197,7 +207,7 @@ public class BluetoothIO extends BluetoothGattCallback {
                 log('e', TAG, "connect to miband first");
                 throw new Exception("connect to miband first");
             }
-            this.currentCallback = callback;
+            this.mCurrentCallback = callback;
             BluetoothGattCharacteristic chara = mBluetoothGatt.getService(serviceUUID).getCharacteristic(characteristicUUID);
             if (null == chara) {
                 this.onFail(-1, "BluetoothGattCharacteristic " + characteristicUUID + " is not exsit");
@@ -235,7 +245,7 @@ public class BluetoothIO extends BluetoothGattCallback {
                 log('e', TAG, "connect to miband first");
                 throw new Exception("connect to miband first");
             }
-            this.currentCallback = callback;
+            this.mCurrentCallback = callback;
             BluetoothGattCharacteristic chara = mBluetoothGatt.getService(serviceUUID).getCharacteristic(characteristicUUID);
             if (null == chara) {
                 this.onFail(-1, "BluetoothGattCharacteristic " + characteristicUUID + " is not exsit");
@@ -260,7 +270,7 @@ public class BluetoothIO extends BluetoothGattCallback {
                 log('e', TAG, "connect to miband first");
                 throw new Exception("connect to miband first");
             }
-            this.currentCallback = callback;
+            this.mCurrentCallback = callback;
             this.mBluetoothGatt.readRemoteRssi();
         } catch (Throwable tr) {
             log('e', TAG, "readRssi", tr);
@@ -269,6 +279,20 @@ public class BluetoothIO extends BluetoothGattCallback {
 
     }
 
+    public void setCharacteristicNotification(UUID serviceUUID, UUID characteristicId,
+                                              boolean enabled) {
+        if (null == mBluetoothGatt) {
+            log('e', TAG, "connect to miband first");
+            return;
+        }
+
+        BluetoothGattCharacteristic chara = mBluetoothGatt.getService(serviceUUID).getCharacteristic(characteristicId);
+        if (chara == null) {
+            log('e', TAG, "characteristicId " + characteristicId.toString() + " not found in service " + serviceUUID.toString());
+            return;
+        }
+        setCharacteristicNotification(chara, enabled);
+    }
     /**
      * Enables or disables notification on a give characteristic.
      *
@@ -329,6 +353,7 @@ public class BluetoothIO extends BluetoothGattCallback {
             mConnectionState = STATE_CONNECTED;
             broadcastUpdate(intentAction);
             log('i', TAG, "Connected to GATT server.");
+
             // Attempts to discover services after successful connection.
             log('i', TAG, "Attempting to start service discovery:" +
                     gatt.discoverServices());
@@ -346,14 +371,44 @@ public class BluetoothIO extends BluetoothGattCallback {
 
     }
 
+    private void setConnection() {
+        writeCharacteristic(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_BATTERY_INFO, Protocol.UNKNOWN_1, null);
+        writeCharacteristic(Profile.UUID_SERVICE_GENERIC_ACCESS, Profile.UUID_CHAR_PERIPHERAL_PREFERRED_CONNECTION_PRAMETERS, Protocol.UNKNOWN_2, null);
+        setCharacteristicNotification(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, true);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (isConnected) {
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    writeCharacteristic(Profile.UUID_SERVICE_MIBAND, Profile.UUID_CHAR_DISPLAY_SETTINGS, Protocol.UNKNOWN_3, null);
+                }
+            }
+        }).start();
+    }
+
     @Override
     public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+        if (characteristic.getUuid().equals(mCharBatteryInfo.getUuid())) {
+            int i = characteristic.getValue()[1];
+            final String str = "Battery: " + (i & 0xFF) + "%";
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(mContext, str, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
         super.onCharacteristicRead(gatt, characteristic, status);
         log('d', TAG, "onCharacteristicRead() - serviceUUID : "+characteristic.getService().getUuid().toString()+", characteristicUUID : "+characteristic.getUuid().toString()+" value : "+ Arrays.toString(characteristic.getValue()));
         if (BluetoothGatt.GATT_SUCCESS == status) {
             log('i', TAG, "onCharacteristicRead success");
             this.onSuccess(characteristic);
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+
         } else {
             log('i', TAG, "onCharacteristicRead fail");
             this.onFail(status, "onCharacteristicRead fail");
@@ -392,11 +447,17 @@ public class BluetoothIO extends BluetoothGattCallback {
             log('i', TAG, "onServicesDiscovered success");
             this.onSuccess(null);
             broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
+
+//            setConnection();
+
         } else {
             log('i', TAG, "onServicesDiscovered fail");
             this.onFail(status, "onServicesDiscovered fail");
             log('w', TAG, "onServicesDiscovered received: " + status);
         }
+        BluetoothGattService bluetoothGattService = gatt.getService(Profile.UUID_SERVICE_MIBAND);
+        mCharBatteryInfo = bluetoothGattService.getCharacteristic(Profile.UUID_CHAR_BATTERY_INFO);
+        gatt.readCharacteristic(mCharBatteryInfo);
     }
 
     @Override
@@ -409,21 +470,27 @@ public class BluetoothIO extends BluetoothGattCallback {
         }
     }
 
+    @Override
+    public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+        super.onDescriptorWrite(gatt, descriptor, status);
+
+    }
+
     /*
-        ActionCallback
-     */
+            ActionCallback
+         */
     private void onSuccess(Object data) {
-        if (this.currentCallback != null) {
-            ActionCallback callback = this.currentCallback;
-            this.currentCallback = null;
+        if (this.mCurrentCallback != null) {
+            ActionCallback callback = this.mCurrentCallback;
+            this.mCurrentCallback = null;
             callback.onSuccess(data);
         }
     }
 
     private void onFail(int errorCode, String msg) {
-        if (this.currentCallback != null) {
-            ActionCallback callback = this.currentCallback;
-            this.currentCallback = null;
+        if (this.mCurrentCallback != null) {
+            ActionCallback callback = this.mCurrentCallback;
+            this.mCurrentCallback = null;
             callback.onFail(errorCode, msg);
         }
     }
@@ -434,7 +501,7 @@ public class BluetoothIO extends BluetoothGattCallback {
 
     private void broadcastUpdate(final String action) {
         final Intent intent = new Intent(action);
-        context.sendBroadcast(intent);
+        mContext.sendBroadcast(intent);
     }
 
     private void broadcastUpdate(final String action,
@@ -467,7 +534,7 @@ public class BluetoothIO extends BluetoothGattCallback {
                 intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
             }
         }
-        context.sendBroadcast(intent);
+        mContext.sendBroadcast(intent);
 
     }
 }

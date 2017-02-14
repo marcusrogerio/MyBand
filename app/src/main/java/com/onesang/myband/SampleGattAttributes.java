@@ -71,7 +71,7 @@ public class SampleGattAttributes {
         attributes.put(Profile.UUID_CHAR_DISPLAY_SETTINGS.toString(), "Display settings Characteristic");
         attributes.put(Profile.UUID_CHAR_UNKNOWN18.toString(), "uuid_char_unknown18");
         attributes.put(Profile.UUID_CHAR_UNKNOWN19.toString(), "uuid_char_unknown19");
-        attributes.put(Profile.UUID_CHAR_UNKNOWN20.toString(), "uuid_char_unknown20");
+        attributes.put(Profile.UUID_CHAR_BATTERY_INFO.toString(), "Battery Info Characteristic");
         attributes.put(Profile.UUID_CHAR_UNKNOWN21.toString(), "uuid_char_unknown21");
         attributes.put(Profile.UUID_CHAR_BAND_LOCATION.toString(), "Band Location Characteristic");
         attributes.put(Profile.UUID_CHAR_UNKNOWN23.toString(), "uuid_char_unknown23");

@@ -200,8 +200,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     mBluetoothLeService.readRssi(new ActionCallback() {
                         @Override
                         public void onSuccess(Object data) {
-                            String str = getResources().getString(R.string.rssi) + " " + data;
-                            mTvReadRssi.setText(str);
+                            updateUIState(mTvReadRssi, R.string.rssi, data.toString());
                             log('d', TAG, "readRssi success");
                         }
 
@@ -229,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                     mode = AlertMode.ALERT_NORMAL;
                                     break;
                             }
-                            mBluetoothLeService.startVibration(mode);
+                            mBluetoothLeService.startAlert(mode);
                             dialog.dismiss();
                         }
                     }).show();
@@ -238,7 +237,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.btnStopVibration:
                 if (mBluetoothLeService != null) {
-                    mBluetoothLeService.stopVibration();
+                    mBluetoothLeService.stopAlert();
                 }
                 break;
             case R.id.btnSetHeartRateListener:
@@ -328,6 +327,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (item.getItemId()) {
             case R.id.menu_scan:
                 startActivity(new Intent(getApplicationContext(), DeviceScanActivity.class));
+                break;
+            case R.id.menu_developer:
+                startActivity(new Intent(getApplicationContext(), DeveloperModeActivity.class));
                 break;
         }
         return super.onOptionsItemSelected(item);

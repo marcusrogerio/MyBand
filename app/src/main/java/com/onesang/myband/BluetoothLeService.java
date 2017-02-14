@@ -32,9 +32,10 @@ import com.onesang.myband.sdk.MiBand;
 import com.onesang.myband.sdk.listeners.HeartRateNotifyListener;
 import com.onesang.myband.sdk.listeners.NotifyListener;
 import com.onesang.myband.sdk.listeners.model.AlertMode;
+import com.onesang.myband.sdk.listeners.model.BandLocation;
 import com.onesang.myband.sdk.listeners.model.Profile;
+import com.onesang.myband.sdk.listeners.model.TimeFormat;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -108,20 +109,7 @@ public class BluetoothLeService extends Service {
             public void onSuccess(Object data) {
                 pd.dismiss();
                 log('d', TAG, "connected!!!");
-//                setNotifyListener(Profile.UUID_CHAR_DISPLAY_SETTINGS, new NotifyListener() {
-//                    @Override
-//                    public void onNotify(byte[] data) {
-//                        log('d', TAG, Arrays.toString(data));
-//                    }
-//                });
-//                new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        while (true) {
-//
-//                        }
-//                    }
-//                }).start();
+
                 miband.setDisconnectedListener(new NotifyListener() {
                     @Override
                     public void onNotify(byte[] data) {
@@ -155,12 +143,12 @@ public class BluetoothLeService extends Service {
         miband.close();
     }
 
-    public void startVibration(AlertMode mode) {
-        miband.startVibration(mode);
+    public void startAlert(AlertMode mode) {
+        miband.startAlert(mode);
     }
 
-    public void stopVibration() {
-        miband.stopVibration();
+    public void stopAlert() {
+        miband.stopAlert();
     }
 
     public void setHeartRateScanListener(HeartRateNotifyListener listener) {
@@ -220,6 +208,26 @@ public class BluetoothLeService extends Service {
 
     public void dismiss() {
         pd.dismiss();
+    }
+
+    public void setBandLocation(BandLocation bandLocation) {
+        miband.setBandLocation(bandLocation);
+    }
+
+    public void setTimeFormat(TimeFormat timeFormat) {
+        miband.setTimeFormat(timeFormat);
+    }
+
+    public void setLiftWrist(boolean enabled) {
+        miband.setLiftWrist(enabled);
+    }
+
+    public void setHeartRateSleepAssistant(boolean enabled) {
+        miband.setHeartRateSleepAssistant(enabled);
+    }
+
+    public void setDiscoverable(boolean enabled) {
+        miband.setDiscoverable(enabled);
     }
 
     public class LocalBinder extends Binder {

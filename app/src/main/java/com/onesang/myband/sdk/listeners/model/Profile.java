@@ -335,7 +335,13 @@ public class Profile {
     //setValue() - service uuid=00001802-0000-1000-8000-00805f9b34fb char uuid=00002a06-0000-1000-8000-00805f9b34fb value=[-1, 100, 0, -106, 0, 2]
         //value=[-1, -6, 0, -106, 0, 3]
         //[-1, -6, 0, -106, 0, 3]
-        //
+        //[-1, 100, 0, 0, 0, 1]
+        //=[-1, -6, 0, -106, 0, 3]
+        //[-1, 100, 0, -106, 0, 3]
+        //[-1, 100, 0, -106, 0, 2]
+        //[-1, -6, 0, -106, 0, 3]
+        //[-1, -24, 3, 0, 0, 1]
+
         public static final UUID UUID_CHAR_DISPLAY_SETTINGS = UUID.fromString("00000003-0000-3512-2118-0009af100700");
 
 //        public static final UUID UUID_CHAR_PERIPHERAL_PREFERRED_CONNECTION_PRAMETERS = UUID.fromString("00002a04-0000-1000-8000-00805f9b34fb");
@@ -354,7 +360,7 @@ public class Profile {
         // 2. setCharacteristicNotification() true when connecting miband
 
         // m f b 1
-        public static final UUID UUID_CHAR_UNKNOWN20 = UUID.fromString("00000006-0000-3512-2118-0009af100700");
+        public static final UUID UUID_CHAR_BATTERY_INFO = UUID.fromString("00000006-0000-3512-2118-0009af100700");
 
         // 2-1
         // getProperties() mProperties=18
@@ -426,4 +432,22 @@ public class Profile {
     // ========================== Characteristic ============================
 
     // ========================== Characteristic end ============================
+
+
+    /*
+        UUID_CHAR_DISPLAY_SETTINGS
+        onChraracteristicChanged(), onDescriptorWrite() -> getValue
+        azr.onDescriptorWrite() -> azp.m() -> setValue([3, 1])
+        onNotify() -> setValue([16, 3, 1, 1, -98, 18, 0, 0, 1, 0, 1, 0, 74, 0, 0, 0])
+
+        setValue() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 value=[16, 3, 1, 1, -98, 18, 0, 0, 1, 0, 1, 0, 74, 0, 0, 0]
+        getValue() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 value=[16, 3, 1, 1, -98, 18, 0, 0, 1, 0, 1, 0, 74, 0, 0, 0]
+        setValue() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 value=[3, 1]
+        getProperties() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 mProperties=20
+        getProperties() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 mProperties=20
+        getValue() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 value=[3, 1]
+        getValue() - service uuid=0000fee0-0000-1000-8000-00805f9b34fb char uuid=00000003-0000-3512-2118-0009af100700 value=[3, 1]
+
+        */
+
 }
